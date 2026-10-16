@@ -312,9 +312,7 @@ kpi5.metric(
     "Retention Stability Index",
     f"{average_retention:.2f}%"
 )
-kpi5.caption(
-    " "
-)
+
 
 # Project-defined relative longevity index: Clean songs are the 100-point reference.
 explicit_kpi_data = lifecycle.dropna(subset=["is_explicit"]).copy()
@@ -335,9 +333,7 @@ kpi6.metric(
     "Explicit Content Lifecycle Score",
     explicit_score_text
 )
-kpi6.caption(
-    " "
-)
+
 
 single_avg_days = lifecycle.loc[
     lifecycle["album_type"].astype(str).str.lower() == "single",
@@ -358,13 +354,7 @@ kpi7.metric(
     "Single vs Album Longevity Ratio",
     longevity_ratio_text
 )
-kpi7.caption(
-    " "
-)
 
-st.caption(
-    " "
-)
 
 # --------------------------------------------------
 # LIFECYCLE ANALYSIS
@@ -415,10 +405,6 @@ stage_counts = (
     .reindex(stage_options, fill_value=0)
 )
 st.bar_chart(stage_counts)
-st.caption(
-    "Counts represent daily playlist records, not unique songs. "
-    "Stages are simplified project-defined labels based on observed ranking changes."
-)
 
 st.subheader("Song Lifecycle Timeline")
 timeline_songs = (
@@ -447,10 +433,7 @@ if not timeline.empty:
     plt.tight_layout()
     st.pyplot(fig)
     plt.close(fig)
-    st.caption(
-        "The timeline shows observed playlist positions on dates present in the dataset. "
-        "Gaps mean the song may not have appeared in the playlist on every intervening day."
-    )
+   
 
 # --------------------------------------------------
 # PLAYLIST ROTATION
@@ -521,11 +504,7 @@ st.dataframe(
     use_container_width=True
 )
 
-st.caption(
-    "The Explicit Content Lifecycle Score in the Overview is a relative longevity index: "
-    "average observed days for explicit songs divided by average observed days for clean songs, "
-    "multiplied by 100 (clean songs = 100). It is descriptive, not causal."
-)
+
 
 fig, ax = plt.subplots(figsize=(8, 4))
 
