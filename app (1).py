@@ -274,6 +274,7 @@ churn_df = pd.DataFrame(churn_records)
 
 st.header("1. Overview")
 
+# Core dashboard metrics
 col1, col2, col3, col4 = st.columns(4)
 
 col1.metric(
@@ -282,30 +283,91 @@ col1.metric(
 )
 
 col2.metric(
-    "Average Observed Days",
+    "Average Days on Playlist",
     f"{lifecycle['observed_playlist_days'].mean():.2f}"
 )
 
+average_entry_to_peak = lifecycle["time_to_peak_days"].mean()
 col3.metric(
-    "Average Popularity",
-    f"{lifecycle['average_popularity'].mean():.2f}"
+    "Entry-to-Peak Time",
+    f"{average_entry_to_peak:.2f} days" if pd.notna(average_entry_to_peak) else "N/A"
 )
 
 if len(churn_df) > 1:
-    average_churn = (
-        churn_df["new_entries"].iloc[1:].mean() / 50
-    ) * 100
+    average_churn = (churn_df["new_entries"].iloc[1:].mean() / 50) * 100
+    average_retention = (churn_df["songs_retained"].iloc[1:].mean() / 50) * 100
 else:
     average_churn = 0
+    average_retention = 0
 
 col4.metric(
-    "Entry-Based Churn",
+    "Playlist Churn Rate",
     f"{average_churn:.2f}%"
+)
+
+st.subheader("Additional Key Performance Indicators (KPIs)")
+kpi5, kpi6, kpi7 = st.columns(3)
+
+kpi5.metric(
+    "Retention Stability Index",
+    f"{average_retention:.2f}%"
+)
+kpi5.caption(
+    "Average share of songs retained from one observed playlist date to the next."
+)
+
+# Project-defined relative longevity index: Clean songs are the 100-point reference.
+explicit_kpi_data = lifecycle.dropna(subset=["is_explicit"]).copy()
+clean_avg_days = explicit_kpi_data.loc[
+    explicit_kpi_data["is_explicit"] == False, "observed_playlist_days"
+].mean()
+explicit_avg_days = explicit_kpi_data.loc[
+    explicit_kpi_data["is_explicit"] == True, "observed_playlist_days"
+].mean()
+
+if pd.notna(clean_avg_days) and clean_avg_days > 0 and pd.notna(explicit_avg_days):
+    explicit_lifecycle_score = (explicit_avg_days / clean_avg_days) * 100
+    explicit_score_text = f"{explicit_lifecycle_score:.1f}"
+else:
+    explicit_score_text = "N/A"
+
+kpi6.metric(
+    "Explicit Content Lifecycle Score",
+    explicit_score_text
+)
+kpi6.caption(
+    "Relative observed playlist longevity index; Clean songs = 100. "
+    "This is a project-defined comparison, not an industry-standard score."
+)
+
+single_avg_days = lifecycle.loc[
+    lifecycle["album_type"].astype(str).str.lower() == "single",
+    "observed_playlist_days"
+].mean()
+album_avg_days = lifecycle.loc[
+    lifecycle["album_type"].astype(str).str.lower() == "album",
+    "observed_playlist_days"
+].mean()
+
+if pd.notna(single_avg_days) and pd.notna(album_avg_days) and album_avg_days > 0:
+    longevity_ratio = single_avg_days / album_avg_days
+    longevity_ratio_text = f"{longevity_ratio:.2f}×"
+else:
+    longevity_ratio_text = "N/A"
+
+kpi7.metric(
+    "Single vs Album Longevity Ratio",
+    longevity_ratio_text
+)
+kpi7.caption(
+    "Average observed days for songs labelled 'single' divided by those labelled 'album'. "
+    "N/A appears if either category is unavailable."
 )
 
 st.caption(
     "Metrics are calculated from the selected date range and filters. "
-    "Observed days count distinct dates on which a song appears."
+    "Observed days count distinct dates on which a song appears. "
+    "The retention index and explicit lifecycle score are project-defined measures."
 )
 
 # --------------------------------------------------
@@ -463,6 +525,12 @@ st.dataframe(
     use_container_width=True
 )
 
+st.caption(
+    "The Explicit Content Lifecycle Score in the Overview is a relative longevity index: "
+    "average observed days for explicit songs divided by average observed days for clean songs, "
+    "multiplied by 100 (clean songs = 100). It is descriptive, not causal."
+)
+
 fig, ax = plt.subplots(figsize=(8, 4))
 
 ax.bar(
@@ -582,7 +650,4 @@ st.download_button(
     file_name="spain_top50_song_lifecycle.csv",
     mime="text/csv"
 )
-
-
-
 
