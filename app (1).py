@@ -305,7 +305,7 @@ col4.metric(
     f"{average_churn:.2f}%"
 )
 
-st.subheader("Additional Key Performance Indicators (KPIs)")
+st.subheader(" ")
 kpi5, kpi6, kpi7 = st.columns(3)
 
 kpi5.metric(
@@ -313,7 +313,7 @@ kpi5.metric(
     f"{average_retention:.2f}%"
 )
 kpi5.caption(
-    "Average share of songs retained from one observed playlist date to the next."
+    " "
 )
 
 # Project-defined relative longevity index: Clean songs are the 100-point reference.
@@ -336,8 +336,7 @@ kpi6.metric(
     explicit_score_text
 )
 kpi6.caption(
-    "Relative observed playlist longevity index; Clean songs = 100. "
-    "This is a project-defined comparison, not an industry-standard score."
+    " "
 )
 
 single_avg_days = lifecycle.loc[
@@ -360,14 +359,11 @@ kpi7.metric(
     longevity_ratio_text
 )
 kpi7.caption(
-    "Average observed days for songs labelled 'single' divided by those labelled 'album'. "
-    "N/A appears if either category is unavailable."
+    " "
 )
 
 st.caption(
-    "Metrics are calculated from the selected date range and filters. "
-    "Observed days count distinct dates on which a song appears. "
-    "The retention index and explicit lifecycle score are project-defined measures."
+    " "
 )
 
 # --------------------------------------------------
