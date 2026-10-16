@@ -137,6 +137,62 @@ if filtered.empty:
     st.stop()
 
 # --------------------------------------------------
+# LIFECYCLE STAGE CLASSIFICATION AND FILTER
+# --------------------------------------------------
+
+# Classify each daily playlist record using its observed ranking history.
+# A lower numerical position means a better ranking.
+stage_data = filtered.sort_values(["song_id", "date"]).copy()
+stage_data["entry_date"] = stage_data.groupby("song_id")["date"].transform("min")
+stage_data["days_since_entry"] = (
+    stage_data["date"] - stage_data["entry_date"]
+).dt.days
+stage_data["previous_position"] = stage_data.groupby("song_id")["position"].shift(1)
+stage_data["lifecycle_stage"] = "Mature Phase"
+
+stage_data.loc[stage_data["days_since_entry"] <= 7, "lifecycle_stage"] = "New Entry"
+peak_mask = (
+    (stage_data["days_since_entry"] > 7)
+    & (stage_data["position"] <= 10)
+)
+stage_data.loc[peak_mask, "lifecycle_stage"] = "Peak Phase"
+growth_mask = (
+    (stage_data["days_since_entry"] > 7)
+    & (stage_data["position"] > 10)
+    & stage_data["previous_position"].notna()
+    & (stage_data["position"] < stage_data["previous_position"])
+)
+stage_data.loc[growth_mask, "lifecycle_stage"] = "Growth Phase"
+decline_mask = (
+    (stage_data["days_since_entry"] > 7)
+    & (stage_data["position"] > 10)
+    & stage_data["previous_position"].notna()
+    & (stage_data["position"] > stage_data["previous_position"])
+)
+stage_data.loc[decline_mask, "lifecycle_stage"] = "Decline Phase"
+
+stage_options = [
+    "New Entry", "Growth Phase", "Peak Phase", "Mature Phase", "Decline Phase"
+]
+selected_stages = st.sidebar.multiselect(
+    "Lifecycle Stage",
+    options=stage_options,
+    default=stage_options,
+    help="Choose which lifecycle stages to include in the song-level results and timeline."
+)
+
+if not selected_stages:
+    st.warning("Select at least one lifecycle stage.")
+    st.stop()
+
+# Keep stage distribution based on all records matching the date/content filters.
+# Apply the lifecycle-stage filter to the data used by the remaining analyses.
+filtered = stage_data[stage_data["lifecycle_stage"].isin(selected_stages)].copy()
+if filtered.empty:
+    st.warning("No records match the selected lifecycle stages.")
+    st.stop()
+
+# --------------------------------------------------
 # SONG LIFECYCLE
 # --------------------------------------------------
 
@@ -292,6 +348,51 @@ ax.set_ylabel("Number of Songs")
 
 st.pyplot(fig)
 plt.close(fig)
+
+# Lifecycle stage distribution (uses date/content/album filters, before stage filter).
+st.subheader("Lifecycle Stage Distribution")
+stage_counts = (
+    stage_data["lifecycle_stage"]
+    .value_counts()
+    .reindex(stage_options, fill_value=0)
+)
+st.bar_chart(stage_counts)
+st.caption(
+    "Counts represent daily playlist records, not unique songs. "
+    "Stages are simplified project-defined labels based on observed ranking changes."
+)
+
+st.subheader("Song Lifecycle Timeline")
+timeline_songs = (
+    filtered[["song_id", "song", "artist"]]
+    .drop_duplicates()
+    .sort_values(["artist", "song"])
+)
+timeline_labels = {
+    row["song_id"]: f'{row["song"]} — {row["artist"]}'
+    for _, row in timeline_songs.iterrows()
+}
+selected_song_id = st.selectbox(
+    "Select a song to view its playlist ranking over time",
+    options=timeline_songs["song_id"].tolist(),
+    format_func=lambda song_id: timeline_labels.get(song_id, song_id)
+)
+timeline = filtered[filtered["song_id"] == selected_song_id].sort_values("date")
+if not timeline.empty:
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.plot(timeline["date"], timeline["position"], marker="o")
+    ax.set_title(f'Playlist Ranking Over Time: {timeline.iloc[0]["song"]}')
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Playlist Position (1 is best)")
+    ax.invert_yaxis()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
+    st.caption(
+        "The timeline shows observed playlist positions on dates present in the dataset. "
+        "Gaps mean the song may not have appeared in the playlist on every intervening day."
+    )
 
 # --------------------------------------------------
 # PLAYLIST ROTATION
@@ -481,5 +582,7 @@ st.download_button(
     file_name="spain_top50_song_lifecycle.csv",
     mime="text/csv"
 )
+
+
 
 
